@@ -1,0 +1,13 @@
+version: '3'
+services:
+  discord-bot:
+    build: .
+    container_name: discord-bot
+    restart: always
+    environment:
+      - NODE_ENV=production
+      - TOKEN=${DISCORD_BOT_TOKEN}
+      - CLIENT_ID=${DISCORD_CLIENT_ID}
+      - GUILD_ID=${DISCORD_GUILD_ID}
+      - CHANNEL_ID=${DISCORD_CHANNEL_ID}
+
