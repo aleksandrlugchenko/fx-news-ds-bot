@@ -3,10 +3,12 @@ const axios = require('axios');
 const cron = require('node-cron');
 const cheerio = require("cheerio");
 const dayjs = require('dayjs');
+const timezone = require('dayjs/plugin/timezone');
+const utc = require('dayjs/plugin/utc');
 require('dotenv').config();
 require('dayjs/locale/ru');
-dayjs.locale('ru');
-
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 
 
@@ -54,6 +56,35 @@ client.once('ready', async () => {
     scheduleNewsPosting();
 });
 
+function convertTo24Hour(time) {
+    const match = time.match(/(\d{1,2}):(\d{2})([APap][Mm])/);
+
+    // if (!match) {
+    //     throw new Error(`Invalid time format for time ${time}`);
+    // }
+    let hours = parseInt(match[1], 10);
+    const minutes = match[2];
+    const modifier = match[3];
+
+    if (modifier === 'pm' && hours !== 12) {
+        hours += 12;
+    } else if (modifier === 'am' && hours === 12) {
+        hours = 0;
+    }
+
+    const formattedHours = hours.toString().padStart(2, '0');
+
+    return `${formattedHours}:${minutes}`;
+}
+
+
+function convertToUTC(dateString) {
+    const date = dayjs(dateString, 'YYYY-MM-DD HH:mm');
+    const utcDate = date.utc();
+
+    return utcDate.format('YYYY-MM-DDTHH:mm:ss[Z]');
+}
+
 async function fetchForexNews() {
     try {
         console.log('Fetching Forex news...');
@@ -99,8 +130,15 @@ async function fetchForexNews() {
             }
 
             if (['EUR', 'USD', 'GBP'].includes(currency)  && event && (impact === 'High' || impact === 'Medium')) {
-                const fullDateTime = dayjs.tz(`${currentDate} ${time}`, 'YYYY-MM-DD h:mma', 'UTC').tz('Europe/Berlin');
-                newsItems.push({ date: fullDateTime.format('YYYY-MM-DD'), time: fullDateTime.format('HH:mm'), currency, impact, event });
+                let resTime = ''
+                if (currentTime === 'All Day') {
+                    resTime = 'All Day'
+                } else  {
+                    if (currentTime?.length) {
+                        resTime = dayjs(convertToUTC(`${currentDate} ${convertTo24Hour(currentTime)}`)).tz('Europe/Berlin').format('HH:mm')
+                    }
+                }
+                newsItems.push({ date: currentDate, time: currentTime, currency, impact, event });
             }
         });
 
